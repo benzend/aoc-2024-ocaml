@@ -46,6 +46,23 @@ let day_one =
   let combined = List.combine left_sorted right_sorted in
   let diff x y = if x > y then x - y else y - x in
   let sum = List.fold_left (fun a (t, b) -> a + diff t b) 0 combined in
-  string_of_int sum;;
+  let part_one = string_of_int sum in
+  let hash = Hashtbl.create 123456 in
+  let setup_hash elem =
+    let v = Hashtbl.find_opt hash elem in
+    match v with
+    | Some x -> Hashtbl.replace hash elem (x + 1)
+    | None -> Hashtbl.add hash elem 1 in
+  let () = List.iter setup_hash right_int in
+  let sum_self_times_count v =
+    let s = Hashtbl.find_opt hash v in
+    match s with
+    | Some x -> v * x
+    | None -> 0 in
+  let counts = List.map sum_self_times_count left_int in
+  let sum = List.fold_left ( + ) 0 counts in
+  let part_two = string_of_int sum in
+  (part_one, part_two);;
 
-Printf.printf "Day One: %s" day_one;;
+
+Printf.printf "Day One: Part One: %s, Part Two: %s" (fst day_one) (snd day_one);;
