@@ -66,3 +66,35 @@ let day_one =
 
 
 Printf.printf "Day One: Part One: %s, Part Two: %s" (fst day_one) (snd day_one);;
+
+let day_two =
+  let lines = read_file "./data/day-2.txt" in
+  let reports = List.map split_by_whitespace lines in
+  let is_safe report =
+    let check x y =
+      let x_i = int_of_string x in
+      let y_i = int_of_string y in
+      if x_i < y_i && y_i - x_i < 4 then
+        "+"
+      else if x_i > y_i && x_i - y_i < 4 then
+        "-"
+      else
+        ":("
+      in
+    let rec f l prev_check prev_n =
+      if prev_check = ":(" then
+        false
+      else
+        match l with
+        | [] -> false
+        (* prev_check will never be ":(" thanks to the guard above *)
+        | [x] -> if prev_check == "" || (check prev_n x) = prev_check then true else false
+        | [x; y] -> if prev_check == "" || (check x y) = prev_check then true else false
+        | x :: y :: remainder -> f remainder (check x y) y in
+    f report "" "" in
+  let safe_reports = List.filter is_safe reports in
+  let part_one = List.length safe_reports in
+  string_of_int part_one;;
+
+
+Printf.printf "Day Two: Part One: %s" day_two;;
