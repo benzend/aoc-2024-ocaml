@@ -65,12 +65,14 @@ let day_one =
   (part_one, part_two);;
 
 
-Printf.printf "Day One: Part One: %s, Part Two: %s" (fst day_one) (snd day_one);;
+Printf.printf "Day One: Part One: %s, Part Two: %s\n" (fst day_one) (snd day_one);;
 
-let day_two =
-  let lines = read_file "./data/day-2.txt" in
+let day_two l =
+  let lines = match l with
+  | Some l -> l
+  | None ->read_file "./data/day-2.txt" in
   let reports = List.map split_by_whitespace lines in
-  let is_safe report =
+  let is_safe_report report =
     let check x y =
       let x_i = int_of_string x in
       let y_i = int_of_string y in
@@ -86,15 +88,41 @@ let day_two =
         false
       else
         match l with
-        | [] -> false
+        | [] -> false (* this will never run *)
         (* prev_check will never be ":(" thanks to the guard above *)
-        | [x] -> if prev_check == "" || (check prev_n x) = prev_check then true else false
-        | [x; y] -> if prev_check == "" || (check x y) = prev_check then true else false
-        | x :: y :: remainder -> f remainder (check x y) y in
+        | [x] -> if prev_check = "" || (check prev_n x) = prev_check then true else false
+        | x :: remainder -> if prev_check = "" && prev_n == "" then
+            f remainder "" x
+          else if prev_check = "" && prev_n != "" then
+            f remainder (check prev_n x) x
+          else if (check prev_n x) = prev_check then
+            f remainder (check prev_n x) x
+          else
+            false
+  in
     f report "" "" in
-  let safe_reports = List.filter is_safe reports in
+  let safe_reports = List.filter is_safe_report reports in
   let part_one = List.length safe_reports in
-  string_of_int part_one;;
+  (string_of_int part_one, safe_reports);;
+
+(* let _day_2_test = *)
+(*   let lines = ["7 6 4 2 1"; "1 2 7 8 9"; "9 7 6 2 1"; "1 3 2 4 5"; "8 6 4 4 1"; "1 3 6 7 9"] in *)
+(*   let answer = "2" in *)
+(*   let day_two_res = day_two (Some lines) in *)
+(*   let pass_or_fail = if fst day_two_res = answer then *)
+(*     "pass" *)
+(*   else *)
+(*     "fail" *)
+(*   in *)
+(*   let () = Printf.printf "Day two test: %s. Answer was '%s'. Expected '%s'\n." pass_or_fail (fst day_two_res) answer in *)
+(*   let print_report r = *)
+(*     let () = Printf.printf "report: " in *)
+(*     let print_item s = *)
+(*        Printf.printf "%s," s in *)
+(*     List.iter print_item r in *)
+(*   List.iter print_report (snd day_two_res) *)
 
 
-Printf.printf "Day Two: Part One: %s" day_two;;
+let day_two_res = day_two None;;
+
+Printf.printf "Day Two: Part One: %s\n" (fst day_two_res);;
