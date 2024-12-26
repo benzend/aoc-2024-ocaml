@@ -45,11 +45,6 @@ let rec move x d =
   | Some b -> move b d
 *)
 
-let main = "@"
-let box = "O"
-let wall = "#"
-let empty = "."
-
 type field_item =
   | Main
   | Box
@@ -57,10 +52,10 @@ type field_item =
   | Empty
 
 let field_item_to_string = function
-  | Main -> main
-  | Box -> box
-  | Wall -> wall
-  | Empty -> empty
+  | Main -> "@"
+  | Box -> "O"
+  | Wall -> "#"
+  | Empty -> "."
 
 let field_item_to_char = function
   | Main -> '@'
@@ -169,7 +164,7 @@ let lines = Util.get_day 15
 let (map_lines, queue_lines) =
   let rec f l r rem is_right =
     match rem with
-    | [] -> (l, r)
+    | [] -> (List.rev l, List.rev r)
     | x :: rem ->
         if x = "" then
           f l r rem true
@@ -181,25 +176,32 @@ let (map_lines, queue_lines) =
   in
   f [] [] lines false
 
-let convert f ls =
+let convert f row =
   let rec m rem acc =
     match rem with
-    | [] -> acc
+    | [] -> List.rev acc
     | [x] -> (f x) :: acc
     | x :: rem ->
         m rem (f x :: acc) in
 
-  List.map (fun l -> m (Util.explode_string l) []) ls
+  List.map (fun l -> m (Util.explode_string l) []) row
 
 let map = convert char_to_field_item map_lines
 let queue = List.flatten (convert char_to_direction queue_lines)
 
+let debug_row row =
+  let () = List.iter (fun item -> Printf.printf "%s" (field_item_to_string item)) row in
+  Printf.printf "\n"
+
 let debug_map map =
-  let print_row row =
-    let () = List.iter (fun item -> Printf.printf "%s" (field_item_to_string item)) row in
-    Printf.printf "\n"
-  in
-  List.iter print_row map
+  let () = List.iter debug_row map in
+  Printf.printf "\n"
+
+let debug_queue_item item =
+  direction_to_string item |> Printf.printf "%s"
+
+let debug_queue q =
+  List.iter debug_queue_item q
 
 (*
 so, there are a couple states that you have to think about in order for this to work correctly
@@ -234,14 +236,33 @@ we have a couple of options:
 
 (*returns updated map*)
 let swap_item_in_map new_item coord map =
-  let matches row_index col_index coord = Row row_index = fst coord && Column col_index = snd coord in
-  List.mapi (fun row_index row -> List.mapi (fun col_index old_item -> if matches row_index col_index coord then new_item else old_item) row) map
+  let matches row_index col_index coord =
+    Row row_index = fst coord && Column col_index = snd coord in
+
+  List.mapi (fun row_index row ->
+    List.mapi (fun col_index old_item ->
+      if matches row_index col_index coord then new_item else old_item
+    ) row
+  ) map
 
 let look_for item map =
-  List.find_mapi (fun row_index row -> match List.find_mapi (fun col_index x -> if x = item then Some col_index else None) row with Some col_index -> Some (Row row_index, Column col_index) | None -> None) map
+  List.find_mapi (fun row_index row ->
+    match List.find_mapi (fun col_index x ->
+      if x = item then
+        Some col_index
+      else None
+    ) row with Some col_index -> Some (Row row_index, Column col_index) | None -> None
+  ) map
 
 let what_is_in coord map =
-  List.find_mapi (fun row_index row -> List.find_mapi (fun col_index item -> if Row row_index = fst coord && Column col_index = snd coord then Some item else None) row) map
+  List.find_mapi (fun row_index row ->
+    List.find_mapi (fun col_index item ->
+      if Row row_index = fst coord && Column col_index = snd coord then
+        Some item
+      else
+        None
+    ) row
+  ) map
 
 let what_is_next_of coord direction map =
   match direction with
@@ -256,9 +277,6 @@ let debug_what_is_in coord map =
   | Some x -> Printf.printf "item: %s" (field_item_to_string x)
   | None -> Printf.printf "no item in coordinate"
 
-let () = debug_what_is_in (Row 25, Column 25) map
-
-
 (*should return a new map*)
 let move direction map =
   (*return items to move, if any*)
@@ -269,7 +287,8 @@ let move direction map =
     | (_, coord) ->
         match what_is_next_of coord direction map with
         | None -> failwith "there should be something here"
-        | Some next -> mv direction (next, next_coordinate direction coord) (curr :: history) map
+        | Some next ->
+            mv direction (next, next_coordinate direction coord) (curr :: history) map
   in
 
   let main_pos = match look_for Main map with
@@ -293,11 +312,23 @@ let run_queue new_map direction =
   move direction new_map
 
 let find_all_coords_of item map =
-  let valid_coords = List.mapi (fun row_index row -> List.mapi (fun col_index x -> if x = item then Some (row_index, col_index) else None) row) map in
-  let filtered = List.map (fun l -> (List.filter_map (fun item -> item) l)) valid_coords in
+  let valid_coords = List.mapi (fun row_index row ->
+    List.mapi (fun col_index x ->
+      if x = item then Some (row_index, col_index) else None
+    ) row
+  ) map in
+
+  let filtered = List.map (fun l ->
+    (List.filter_map (fun item -> item) l)
+  ) valid_coords in
+
   List.flatten filtered |> List.map (fun x -> ints_to_coordinate (fst x, snd x))
 
 let sum_of_coords coords =
-  List.fold_left (fun acc coord -> match coord with (Row n, Column m) -> acc + (100 * n + m) | _ -> failwith "invalid coord") 0 coords
+  List.fold_left (fun acc coord ->
+    match coord with
+    | (Row n, Column m) -> acc + ((100 * n) + m)
+    | _ -> failwith "invalid coord"
+  ) 0 coords
 
 let solve = List.fold_left run_queue map queue |> find_all_coords_of Box |> sum_of_coords
