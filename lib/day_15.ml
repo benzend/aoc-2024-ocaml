@@ -160,34 +160,37 @@ let print_coordinate x =
   | (Row n, Column m) -> Printf.printf "Row: %i, Column: %i\n" n m
   | _ -> failwith "not a valid coordinate"
 
-let lines = Util.get_day 15
-let (map_lines, queue_lines) =
+let get_map_and_queue data =
   let rec f l r rem is_right =
-    match rem with
-    | [] -> (List.rev l, List.rev r)
-    | x :: rem ->
-        if x = "" then
-          f l r rem true
-        else
-          if is_right then
-            f l (x :: r) rem is_right
+      match rem with
+      | [] -> (List.rev l, List.rev r)
+      | x :: rem ->
+          if x = "" then
+            f l r rem true
           else
-            f (x :: l) r rem is_right
+            if is_right then
+              f l (x :: r) rem is_right
+            else
+              f (x :: l) r rem is_right
+    in
+  let (map_lines, queue_lines) = f [] [] data false in
+
+  let convert f row =
+    let rec m rem acc =
+      match rem with
+      | [] -> acc
+      | [x] -> (f x) :: acc
+      | x :: rem ->
+          m rem (f x :: acc) in
+
+    List.map (fun l -> m (List.rev (Util.explode_string l)) []) row
   in
-  f [] [] lines false
 
-let convert f row =
-  let rec m rem acc =
-    match rem with
-    | [] -> List.rev acc
-    | [x] -> (f x) :: acc
-    | x :: rem ->
-        m rem (f x :: acc) in
+  let map = convert char_to_field_item map_lines in
+  let queue = List.flatten (convert char_to_direction queue_lines) in
+  (map, queue)
 
-  List.map (fun l -> m (Util.explode_string l) []) row
-
-let map = convert char_to_field_item map_lines
-let queue = List.flatten (convert char_to_direction queue_lines)
+let (map, queue) = get_map_and_queue (Util.get_day 15)
 
 let debug_row row =
   let () = List.iter (fun item -> Printf.printf "%s" (field_item_to_string item)) row in
@@ -314,7 +317,7 @@ let run_queue new_map direction =
 let find_all_coords_of item map =
   let valid_coords = List.mapi (fun row_index row ->
     List.mapi (fun col_index x ->
-      if x = item then Some (row_index, col_index) else None
+      if x = item then Some (Row row_index, Column col_index) else None
     ) row
   ) map in
 
@@ -322,7 +325,7 @@ let find_all_coords_of item map =
     (List.filter_map (fun item -> item) l)
   ) valid_coords in
 
-  List.flatten filtered |> List.map (fun x -> ints_to_coordinate (fst x, snd x))
+  List.flatten filtered |> List.map (fun x -> x)
 
 let sum_of_coords coords =
   List.fold_left (fun acc coord ->
@@ -331,4 +334,9 @@ let sum_of_coords coords =
     | _ -> failwith "invalid coord"
   ) 0 coords
 
-let solve = List.fold_left run_queue map queue |> find_all_coords_of Box |> sum_of_coords
+let solve data debug =
+  let (map, queue) = get_map_and_queue data in
+  if debug then debug_map map;
+  let map_aftermath = List.fold_left run_queue map queue in
+  if debug then debug_map map_aftermath;
+  map_aftermath |> find_all_coords_of Box |> sum_of_coords
